@@ -1,5 +1,6 @@
 const bodyParser = require('body-parser');
 const express = require('express');
+const request = require('request');
 
 const config = require('./config');
 
@@ -44,7 +45,56 @@ app.post('/webhook', (request, response) => {
 });
 
 const receivedMessage = (event) => {
-    console.log(event.message);
+    const senderID = event.sender.id;
+    const recipientID = event.recipient.id;
+    const timeOfMessage = event.timestamp;
+    const message = event.message;
+
+    console.log(`Received message:\nSender: ${senderID}\nMessage: ${JSON.stringify(message)}`);
+
+    const messageID = message.mid;
+    const messageText = message.text;
+    const messageAttachments = message.attachments;
+
+    if(messageText) {
+        sendResponseMessage(senderID, messageText);
+    } else if (messageAttachments) {
+        console.log('Attachment received');
+    }
+};
+
+const sendResponseMessage = (recipientId, messageText) => {
+    const messageData = {
+        recipient: {
+            id: recipientId
+        },
+        message: {
+            text: messageText
+        }
+    };
+
+    callSendAPI(messageData);
+};
+
+const callSendAPI = (messageData) => {
+    request({
+        uri: 'https://graph.facebook.com/v2.6/me/messages',
+        qs: { access_token: config.fb.token },
+        method: 'POST',
+        json: messageData
+    },
+    (err, response, body) => {
+        if(err) {
+            console.log(`Error: ${err}`);
+        } else if(response.statusCode != 200) {
+            console.log(`Error: ${response.statusCode}\n${JSON.stringify(body)}`);
+        } else {
+            const recipientID = body.recipient_id;
+            const messageID = body.message_id;
+
+            console.log(`Sent message to ${recipientID}`);
+        }
+    });
 };
 
 const PORT = process.env.PORT || config.port;
