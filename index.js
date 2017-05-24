@@ -23,9 +23,29 @@ app.get('/webhook', (request, response) => {
 });
 
 app.post('/webhook', (request, response) => {
-    console.log(request.body);
-    response.send(200);
+    const data = request.body;
+
+    if(data.object === 'page') {
+        data.entry.forEach((entry) => {
+            const pageID = entry.id;
+            const timeOfEvent = entry.time;
+
+            entry.messaging.forEach((event) => {
+                if(event.message) {
+                    receivedMessage(event);
+                } else {
+                    console.log(`Unsupported event: ${event}`);
+                }
+            });
+        });
+    }
+
+    response.sendStatus(200);
 });
+
+const receivedMessage = (event) => {
+    console.log(event.message);
+};
 
 const PORT = process.env.PORT || config.port;
 app.listen(PORT, () => {
